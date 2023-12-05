@@ -31,7 +31,7 @@ class WindowClass(QMainWindow) :
         rospy.init_node('my_patrol')
         # QWidget.showFullScreen(self) # 전체화면
         self.cap = cv2.VideoCapture(0)
-        # self.cap = cv2.VideoCapture("http://192.168.123.24:4747/video")
+        # self.cap = cv2.VideoCapture("http://192.168.123.16:4747/video")
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.timer.start(30)
@@ -47,6 +47,7 @@ class WindowClass(QMainWindow) :
         self.abnormal_result = 0 
         self.patrol_thread.finished.connect(self.on_patrol_finished)
 
+    
     def update(self): # 영상전송
         global code
         _, self.frame = self.cap.read()
@@ -69,6 +70,8 @@ class WindowClass(QMainWindow) :
         self.LeftFrame.setPixmap(self.pixmap)
     
     def search(self): # [촬영] (수정본)
+        self.textEdit.setStyleSheet("color: #000000;" "background-color: #00FF00;" "font: 30pt")
+        self.textEdit.setText("촬영 시작")
         self.patrol_thread.start()  # Patrol 스레드 시작
 
     def on_patrol_finished(self):
@@ -110,8 +113,6 @@ class WindowClass(QMainWindow) :
             playsound("wrong.mp3")
             code = 'None'
 
-            # self.brandInfo.setStyleSheet("color: #FFFF00;" "background-color: #FF0000;" "font: 60pt")
-            # self.brandInfo.setText("Brand not found")
 
         elif result is None:
             self.brandInfo.setStyleSheet("color: #FFFF00;" "background-color: #FF0000;" "font: 30pt")
@@ -124,39 +125,19 @@ class WindowClass(QMainWindow) :
         else:
             print(code)
             self.codeInfo.setStyleSheet("color: #FFFFFF;" "background-color: #8080FF;" "font: 30pt")
-            self.textEdit.setStyleSheet("color: #FFFFFF;" "background-color: #8080FF;" "font: 20pt")           
-            self.textEdit.setText(f"{result[1:2]}")
+            self.textEdit.setStyleSheet("color: #FFFFFF;" "background-color: #8080FF;" "font: 30pt") 
+            self.textEdit.setText('')   
             self.codeInfo.setText(code_lite)
-            
-            brand_name = result[0:2]
-            self.brandInfo.setStyleSheet("color: #FFFFFF;" "background-color: #8080FF;")
-            self.brandInfo.setText(f"{brand_name}")
-            # if result is None:
-            #     self.brandInfo.setStyleSheet("color: #FFFF00;" "background-color: #FF0000;" "font: 30pt")
-            #     self.brandInfo.setText("검출불가")
+            brand_info = ', '.join(str(item) for item in result[1:2])
+            self.brandInfo.setStyleSheet("color: #FFFFFF;" "background-color: #8080FF;" "font: 30pt")
+           # self.brandInfo.setText(f"{result[1:2]}")
+            self.brandInfo.setText(brand_info)
             code = 'None'
     
-    # def send_image(self): 
-    #     _, frame = self.cap.read()
-
-    # # Convert the frame to bytes
-    #     _, img_encoded = cv2.imencode('.jpg', frame)
-    #     image_data = img_encoded.tobytes()
-
-    #     # Replace 'your_server_endpoint' with the actual endpoint to which you want to send the image
-    #     server_endpoint = 'http://your_server_endpoint'
-
-    # # Make a POST request to the server to send the image
-    #     try:
-    #         response = requests.post(server_endpoint, files={'image': image_data})
-    #         response.raise_for_status()  # Raise an exception for HTTP errors
-    #         print("Image sent successfully.")
-    #     except requests.exceptions.RequestException as e:
-    #         print(f"Error sending image: {e}")
 
     def transfer(self): # [전송]
-        subprocess.call(["rm -rf", "/home/share/*"])
-        subprocess.call(["mv", "/home/ubuntu/bot/BoxDamageDetect/runs/detect", "/home/share"])
+        subprocess.call(["rm", "-rf", "/home/share/*"])
+        subprocess.call(["cp", "-r", "/home/ubuntu/bot/BoxDamageDetect/runs/detect/", "/home/share"])
         self.textEdit.setStyleSheet("color: #000000;" "background-color: #00FF00;" "font: 30pt")
         self.textEdit.setText("전송 완료")
 
@@ -166,8 +147,15 @@ class WindowClass(QMainWindow) :
         except Exception as e:
             print(f"Error: {e}")
     
-    def comeback(self): # [복귀]
-        self.comback_thread.start()
+    # def comeback(self): # [복귀]
+    #     self.comback_thread.start()
+
+    def comeback(self, button_label): # [복귀]
+        try:
+            subprocess.run(["python3", "map.py"])
+        except Exception as e:
+            print(f"Error: {e}")
+            self.textEdit.setText("")
 
 
 class Patrol(QThread):
@@ -191,7 +179,14 @@ class Patrol(QThread):
 
     #원점 (15.4, -4.5, 0.0), (0.0, 0.0, -0.7, 0.7)
     waypoints = [  # <1>  #(세로, 가로, 0) , (방향)
-        [(15.4, -4.5, 0.0), (0.0, 0.0, -0.7, 0.7)]
+        [(13.415, -5.186, 0.0), (0.0, 0.0, -0.361, 0.932)],
+        [(17.182, -5.613, 0.0), (0.0, 0.0, 0.972, -0.234)],
+        [(17.136, -9.036, 0.0), (0.0, 0.0, 0.916, 0.399)],
+        [(13.570, -8.771, 0.0), (0.0, 0.0, 0.304, 0.952)],
+        [(15.498, -7.280, 0.0), (0.0, 0.0, 0.202, 0.965)],
+        [(15.498, -7.264, 0.0), (0.0, 0.0, -0.317, 0.948)],
+        [(15.498, -7.264, 0.0), (0.0, 0.0, 0.917, -0.396)],
+        [(15.498, -7.264, 0.0), (0.0, 0.0, 0.930, 0.366)], 
     ]
 
     def __init__(self, cap, window_class):
@@ -203,6 +198,8 @@ class Patrol(QThread):
         # rospy.init_node('my_patrol')
         self.count = 0
         self.abnormal = 0
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.clear_global_costmap)
 
     def run(self):
         move_client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
@@ -213,6 +210,7 @@ class Patrol(QThread):
         
         for pose in self.waypoints:
             goal = self.goal_pose(pose)
+            self.timer.start(5000)
             self.clear_global_costmap()
             
             move_client.send_goal(goal)
@@ -274,7 +272,6 @@ class Patrol(QThread):
 
 class ComeBack(QThread): # [복귀]
     waypoints = [  # <1>  #(세로, 가로, 0) , (방향)
-    [(10.5, 1.5, 0.0), (0.0, 0.0, 0.7, 0.7)],  
     [(0.0, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0)]  
 ]
 
